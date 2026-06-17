@@ -19,7 +19,7 @@ type Subscriber = {
   createdAt: string;
 };
 
-const ADMIN_PASSWORD = "scoopjoy2024";
+const ADMIN_PASSWORD = "minnehaha2024";
 
 export default function AdminPage() {
   const [authed, setAuthed] = useState(false);
@@ -152,7 +152,7 @@ export default function AdminPage() {
       {/* Header */}
       <header className="bg-gradient-to-r from-yellow-300 to-pink-300 px-6 py-4 flex items-center justify-between shadow">
         <h1 className="text-2xl font-bold text-coral" style={{ fontFamily: "'Pacifico', cursive" }}>
-          🍦 Scoop &amp; Joy — Admin
+          🍦 Minnehaha Scoop — Admin
         </h1>
         <div className="flex gap-3">
           <a href="/" className="text-sm text-gray-600 hover:text-teal-600 font-semibold">← Shop</a>

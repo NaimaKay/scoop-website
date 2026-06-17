@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Scoop & Joy 🍦",
+  title: "Minnehaha Scoop 🍦",
   description: "Subscribe to get notified when your favorite ice cream flavors are back in stock!",
 };
 

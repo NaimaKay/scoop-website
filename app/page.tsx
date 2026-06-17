@@ -82,7 +82,7 @@ export default function Home() {
       <section className="bg-gradient-to-br from-yellow-300 via-pink-200 to-teal-200 py-20 px-4 text-center">
         <div className="text-7xl mb-4">🍦</div>
         <h1 className="text-6xl font-pacifico text-coral drop-shadow-sm mb-4" style={{ fontFamily: "'Pacifico', cursive" }}>
-          Scoop &amp; Joy
+          Minnehaha Scoop
         </h1>
         <p className="text-2xl font-bold text-gray-700 mb-2" style={{ fontFamily: "'Nunito', sans-serif" }}>
           Life&apos;s too short for boring ice cream!
@@ -124,7 +124,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="bg-yellow-300 text-center py-6 text-gray-700 font-semibold" style={{ fontFamily: "'Nunito', sans-serif" }}>
-        © 2024 Scoop &amp; Joy &nbsp;•&nbsp; Made with 🍦 &nbsp;•&nbsp;{" "}
+        © 2024 Minnehaha Scoop &nbsp;•&nbsp; Made with 🍦 &nbsp;•&nbsp;{" "}
         <a href="/admin" className="underline hover:text-coral transition-colors">Admin</a>
       </footer>
 
