@@ -9,6 +9,7 @@ type Flavor = {
   color: string;
   description: string;
   inStock: boolean;
+  category: string;
 };
 
 type ModalState = { open: boolean; selectedFlavor: Flavor | null };
@@ -73,8 +74,10 @@ export default function Home() {
     }
   }
 
-  const inStock = flavors.filter((f) => f.inStock);
-  const outOfStock = flavors.filter((f) => !f.inStock);
+  const regular = flavors.filter((f) => f.category === "regular");
+  const oatBased = flavors.filter((f) => f.category === "oat-based");
+  const inStock = regular.filter((f) => f.inStock);
+  const outOfStock = regular.filter((f) => !f.inStock);
 
   return (
     <main className="min-h-screen">
@@ -92,7 +95,8 @@ export default function Home() {
         </p>
       </section>
 
-      <div className="max-w-6xl mx-auto px-4 py-12">
+      <div className="max-w-7xl mx-auto px-4 py-12">
+
         {/* In Stock */}
         <h2 className="text-3xl mb-6 text-teal-600 font-bold" style={{ fontFamily: "'Pacifico', cursive" }}>
           🌟 Today&apos;s Flavors
@@ -100,7 +104,7 @@ export default function Home() {
         {inStock.length === 0 && (
           <p className="text-gray-500 mb-8">No flavors in stock right now — check back soon!</p>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-14">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-14">
           {inStock.map((f) => (
             <FlavorCard key={f.id} flavor={f} onNotify={openModal} />
           ))}
@@ -109,13 +113,30 @@ export default function Home() {
         {/* Out of Stock */}
         {outOfStock.length > 0 && (
           <>
-            <h2 className="text-3xl mb-6 text-coral font-bold" style={{ fontFamily: "'Pacifico', cursive" }}>
+            <h2 className="text-3xl mb-2 text-coral font-bold" style={{ fontFamily: "'Pacifico', cursive" }}>
               😢 Temporarily Gone
             </h2>
-            <p className="text-gray-500 mb-6 -mt-3">Subscribe to be the first to know when these come back!</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-14">
+            <p className="text-gray-500 mb-6">Subscribe to be the first to know when these come back!</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-14">
               {outOfStock.map((f) => (
                 <FlavorCard key={f.id} flavor={f} onNotify={openModal} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* Oat-Based / Plant-Based */}
+        {oatBased.length > 0 && (
+          <>
+            <div className="border-t-2 border-dashed border-teal-200 pt-12 mb-6">
+              <h2 className="text-3xl mb-1 text-teal-600 font-bold" style={{ fontFamily: "'Pacifico', cursive" }}>
+                🌱 Plant-Based Flavors
+              </h2>
+              <p className="text-gray-500 mb-6">Oat-based, non-dairy goodness — everyone deserves a scoop!</p>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-14">
+              {oatBased.map((f) => (
+                <FlavorCard key={f.id} flavor={f} onNotify={openModal} plantBased />
               ))}
             </div>
           </>
@@ -181,7 +202,7 @@ export default function Home() {
 
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">Notify me about:</label>
-                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
                       {flavors.map((f) => (
                         <label
                           key={f.id}
@@ -218,25 +239,30 @@ export default function Home() {
   );
 }
 
-function FlavorCard({ flavor, onNotify }: { flavor: Flavor; onNotify: (f: Flavor) => void }) {
+function FlavorCard({ flavor, onNotify, plantBased }: { flavor: Flavor; onNotify: (f: Flavor) => void; plantBased?: boolean }) {
   return (
     <div
       className="rounded-3xl shadow-lg overflow-hidden flex flex-col transition-transform hover:-translate-y-1 hover:shadow-xl"
       style={{ backgroundColor: flavor.color }}
     >
-      <div className="text-6xl text-center pt-8 pb-2">{flavor.emoji}</div>
-      <div className="bg-white/70 backdrop-blur-sm flex-1 p-4 flex flex-col">
-        <h3 className="font-bold text-gray-800 text-lg leading-tight">{flavor.name}</h3>
-        <p className="text-gray-600 text-sm mt-1 flex-1">{flavor.description}</p>
-        <div className="mt-3 flex items-center justify-between">
+      <div className="text-5xl text-center pt-6 pb-1">{flavor.emoji}</div>
+      <div className="bg-white/75 backdrop-blur-sm flex-1 p-3 flex flex-col">
+        <div className="flex items-start justify-between gap-1 mb-1">
+          <h3 className="font-bold text-gray-800 text-sm leading-tight">{flavor.name}</h3>
+          {plantBased && (
+            <span className="text-xs bg-teal-100 text-teal-700 font-bold px-2 py-0.5 rounded-full shrink-0">🌱</span>
+          )}
+        </div>
+        <p className="text-gray-500 text-xs flex-1 leading-snug">{flavor.description}</p>
+        <div className="mt-3 flex items-center justify-between gap-1">
           <span
-            className={`text-xs font-bold px-3 py-1 rounded-full ${
+            className={`text-xs font-bold px-2 py-1 rounded-full ${
               flavor.inStock
                 ? "bg-teal-100 text-teal-700"
                 : "bg-red-100 text-red-600"
             }`}
           >
-            {flavor.inStock ? "✓ In Stock" : "✗ Out of Stock"}
+            {flavor.inStock ? "✓ In Stock" : "✗ Out"}
           </span>
           <button
             onClick={() => onNotify(flavor)}
