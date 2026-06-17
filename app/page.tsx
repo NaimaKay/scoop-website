@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+const ADMIN_PASSWORD = "minnehaha2024";
+
 type Flavor = {
   id: string;
   name: string;
@@ -23,10 +25,52 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [adminMode, setAdminMode] = useState(false);
+  const [adminPrompt, setAdminPrompt] = useState(false);
+  const [adminPw, setAdminPw] = useState("");
+  const [adminPwError, setAdminPwError] = useState("");
+  const [toast, setToast] = useState("");
 
   useEffect(() => {
     fetch("/api/flavors").then((r) => r.json()).then(setFlavors);
   }, []);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 3000);
+  }
+
+  function tryAdminLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (adminPw === ADMIN_PASSWORD) {
+      setAdminMode(true);
+      setAdminPrompt(false);
+      setAdminPw("");
+      setAdminPwError("");
+    } else {
+      setAdminPwError("Wrong password.");
+    }
+  }
+
+  async function toggleStock(flavor: Flavor) {
+    await fetch(`/api/flavors/${flavor.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ inStock: !flavor.inStock }),
+    });
+    const updated = await fetch("/api/flavors").then((r) => r.json());
+    setFlavors(updated);
+    if (!flavor.inStock) {
+      await fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ flavorId: flavor.id }),
+      });
+      showToast(`✓ ${flavor.name} marked in stock — subscribers notified!`);
+    } else {
+      showToast(`✓ ${flavor.name} marked out of stock.`);
+    }
+  }
 
   function openModal(flavor: Flavor) {
     setModal({ open: true, selectedFlavor: flavor });
@@ -83,8 +127,44 @@ export default function Home() {
 
   return (
     <main className="min-h-screen">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-6 right-6 bg-teal-500 text-white px-6 py-3 rounded-2xl shadow-xl z-50 font-bold" style={{ fontFamily: "'Nunito', sans-serif" }}>
+          {toast}
+        </div>
+      )}
+
+      {/* Admin password prompt */}
+      {adminPrompt && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center">
+            <div className="text-4xl mb-3">🔐</div>
+            <h3 className="text-xl font-bold text-gray-700 mb-4" style={{ fontFamily: "'Pacifico', cursive" }}>Admin Mode</h3>
+            <form onSubmit={tryAdminLogin} className="space-y-3">
+              <input
+                type="password"
+                autoFocus
+                value={adminPw}
+                onChange={(e) => setAdminPw(e.target.value)}
+                placeholder="Password"
+                className="w-full border-2 border-yellow-200 rounded-xl px-4 py-2 focus:outline-none focus:border-teal-400 text-center"
+              />
+              {adminPwError && <p className="text-red-500 text-sm">{adminPwError}</p>}
+              <div className="flex gap-2">
+                <button type="submit" className="flex-1 bg-coral text-white font-bold py-2 rounded-full hover:bg-red-400 transition-colors">
+                  Enter
+                </button>
+                <button type="button" onClick={() => { setAdminPrompt(false); setAdminPw(""); setAdminPwError(""); }} className="flex-1 bg-gray-100 text-gray-600 font-bold py-2 rounded-full hover:bg-gray-200 transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Hero */}
-      <section className="bg-gradient-to-br from-yellow-300 via-pink-200 to-teal-200 py-20 px-4 text-center">
+      <section className="bg-gradient-to-br from-yellow-300 via-pink-200 to-teal-200 py-20 px-4 text-center relative">
         <div className="text-7xl mb-4">🍦</div>
         <h1 className="text-6xl font-pacifico text-coral drop-shadow-sm mb-4" style={{ fontFamily: "'Pacifico', cursive" }}>
           Minnehaha Scoop
@@ -95,6 +175,25 @@ export default function Home() {
         <p className="text-lg text-gray-600 max-w-xl mx-auto" style={{ fontFamily: "'Nunito', sans-serif" }}>
           Subscribe to get notified the moment your favorite flavor is back in stock. Never miss a scoop again! 🎉
         </p>
+        <div className="absolute top-4 right-4">
+          {adminMode ? (
+            <button
+              onClick={() => setAdminMode(false)}
+              className="text-xs bg-orange-400 text-white font-bold px-3 py-1.5 rounded-full hover:bg-orange-500 transition-colors"
+              style={{ fontFamily: "'Nunito', sans-serif" }}
+            >
+              Exit Admin Mode
+            </button>
+          ) : (
+            <button
+              onClick={() => setAdminPrompt(true)}
+              className="text-xs bg-white/60 text-gray-500 font-bold px-3 py-1.5 rounded-full hover:bg-white/80 transition-colors"
+              style={{ fontFamily: "'Nunito', sans-serif" }}
+            >
+              Admin
+            </button>
+          )}
+        </div>
       </section>
 
       <div className="max-w-7xl mx-auto px-4 py-12">
@@ -108,7 +207,7 @@ export default function Home() {
         )}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-14">
           {inStock.map((f) => (
-            <FlavorCard key={f.id} flavor={f} onNotify={openModal} />
+            <FlavorCard key={f.id} flavor={f} onNotify={openModal} adminMode={adminMode} onToggleStock={toggleStock} />
           ))}
         </div>
 
@@ -121,24 +220,24 @@ export default function Home() {
             <p className="text-gray-500 mb-6">Subscribe to be the first to know when these come back!</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-14">
               {outOfStock.map((f) => (
-                <FlavorCard key={f.id} flavor={f} onNotify={openModal} />
+                <FlavorCard key={f.id} flavor={f} onNotify={openModal} adminMode={adminMode} onToggleStock={toggleStock} />
               ))}
             </div>
           </>
         )}
 
-        {/* Oat-Based / Plant-Based */}
+        {/* Non-Dairy */}
         {oatBased.length > 0 && (
           <>
             <div className="border-t-2 border-dashed border-teal-200 pt-12 mb-6">
               <h2 className="text-3xl mb-1 text-teal-600 font-bold" style={{ fontFamily: "'Pacifico', cursive" }}>
-                🌱 Plant-Based Flavors
+                🌱 Non-Dairy Flavors
               </h2>
               <p className="text-gray-500 mb-6">Oat-based, non-dairy goodness — everyone deserves a scoop!</p>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-14">
               {oatBased.map((f) => (
-                <FlavorCard key={f.id} flavor={f} onNotify={openModal} plantBased />
+                <FlavorCard key={f.id} flavor={f} onNotify={openModal} nonDairy adminMode={adminMode} onToggleStock={toggleStock} />
               ))}
             </div>
           </>
@@ -241,7 +340,19 @@ export default function Home() {
   );
 }
 
-function FlavorCard({ flavor, onNotify, plantBased }: { flavor: Flavor; onNotify: (f: Flavor) => void; plantBased?: boolean }) {
+function FlavorCard({
+  flavor,
+  onNotify,
+  nonDairy,
+  adminMode,
+  onToggleStock,
+}: {
+  flavor: Flavor;
+  onNotify: (f: Flavor) => void;
+  nonDairy?: boolean;
+  adminMode?: boolean;
+  onToggleStock?: (f: Flavor) => void;
+}) {
   return (
     <div
       className="rounded-3xl shadow-lg overflow-hidden flex flex-col transition-transform hover:-translate-y-1 hover:shadow-xl"
@@ -251,7 +362,7 @@ function FlavorCard({ flavor, onNotify, plantBased }: { flavor: Flavor; onNotify
       <div className="bg-white/75 backdrop-blur-sm flex-1 p-3 flex flex-col">
         <div className="flex items-start justify-between gap-1 mb-1">
           <h3 className="font-bold text-gray-800 text-sm leading-tight">{flavor.name}</h3>
-          {plantBased && (
+          {nonDairy && (
             <span className="text-xs bg-teal-100 text-teal-700 font-bold px-2 py-0.5 rounded-full shrink-0">🌱</span>
           )}
         </div>
@@ -266,12 +377,25 @@ function FlavorCard({ flavor, onNotify, plantBased }: { flavor: Flavor; onNotify
           >
             {flavor.inStock ? "✓ In Stock" : "✗ Out"}
           </span>
-          <button
-            onClick={() => onNotify(flavor)}
-            className="text-xs bg-coral text-white font-bold px-3 py-1 rounded-full hover:bg-red-400 transition-colors"
-          >
-            Notify Me
-          </button>
+          {adminMode ? (
+            <button
+              onClick={() => onToggleStock?.(flavor)}
+              className={`text-xs font-bold px-3 py-1 rounded-full transition-colors ${
+                flavor.inStock
+                  ? "bg-orange-200 text-orange-700 hover:bg-orange-300"
+                  : "bg-teal-200 text-teal-700 hover:bg-teal-300"
+              }`}
+            >
+              {flavor.inStock ? "Mark Out" : "Mark In ✉️"}
+            </button>
+          ) : (
+            <button
+              onClick={() => onNotify(flavor)}
+              className="text-xs bg-coral text-white font-bold px-3 py-1 rounded-full hover:bg-red-400 transition-colors"
+            >
+              Notify Me
+            </button>
+          )}
         </div>
       </div>
     </div>
