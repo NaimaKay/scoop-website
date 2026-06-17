@@ -75,7 +75,9 @@ export default function Home() {
   }
 
   const regular = flavors.filter((f) => f.category === "regular");
-  const oatBased = flavors.filter((f) => f.category === "oat-based");
+  const oatBased = flavors
+    .filter((f) => f.category === "oat-based")
+    .sort((a, b) => a.name.localeCompare(b.name));
   const inStock = regular.filter((f) => f.inStock);
   const outOfStock = regular.filter((f) => !f.inStock);
 
