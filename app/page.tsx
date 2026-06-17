@@ -53,22 +53,35 @@ export default function Home() {
   }
 
   async function toggleStock(flavor: Flavor) {
-    await fetch(`/api/flavors/${flavor.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ inStock: !flavor.inStock }),
-    });
-    const updated = await fetch("/api/flavors").then((r) => r.json());
-    setFlavors(updated);
-    if (!flavor.inStock) {
-      await fetch("/api/notify", {
-        method: "POST",
+    const newStock = !flavor.inStock;
+    // Optimistic update — move the card immediately
+    setFlavors((prev) =>
+      prev.map((f) => (f.id === flavor.id ? { ...f, inStock: newStock } : f))
+    );
+    try {
+      const res = await fetch(`/api/flavors/${flavor.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ flavorId: flavor.id }),
+        body: JSON.stringify({ inStock: newStock }),
       });
-      showToast(`✓ ${flavor.name} is back in stock — subscribers notified!`);
-    } else {
-      showToast(`✓ ${flavor.name} marked out of stock.`);
+      if (!res.ok) throw new Error(`API error ${res.status}`);
+      if (newStock) {
+        await fetch("/api/notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ flavorId: flavor.id }),
+        });
+        showToast(`✓ ${flavor.name} is back in stock — subscribers notified!`);
+      } else {
+        showToast(`✓ ${flavor.name} marked out of stock.`);
+      }
+    } catch (err) {
+      // Revert on failure
+      setFlavors((prev) =>
+        prev.map((f) => (f.id === flavor.id ? { ...f, inStock: flavor.inStock } : f))
+      );
+      showToast(`✗ Failed to update ${flavor.name}. Please try again.`);
+      console.error(err);
     }
   }
 
