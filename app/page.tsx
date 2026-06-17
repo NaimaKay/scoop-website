@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+const ADMIN_PASSWORD = "minnehaha2024";
+
 type Flavor = {
   id: string;
   name: string;
@@ -23,10 +25,65 @@ export default function Home() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [adminMode, setAdminMode] = useState(false);
+  const [adminPrompt, setAdminPrompt] = useState(false);
+  const [adminPw, setAdminPw] = useState("");
+  const [adminPwError, setAdminPwError] = useState("");
+  const [toast, setToast] = useState("");
 
   useEffect(() => {
     fetch("/api/flavors").then((r) => r.json()).then(setFlavors);
   }, []);
+
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 4000);
+  }
+
+  function tryAdminLogin(e: React.FormEvent) {
+    e.preventDefault();
+    if (adminPw === ADMIN_PASSWORD) {
+      setAdminMode(true);
+      setAdminPrompt(false);
+      setAdminPw("");
+      setAdminPwError("");
+    } else {
+      setAdminPwError("Wrong password.");
+    }
+  }
+
+  async function toggleStock(flavor: Flavor) {
+    const newStock = !flavor.inStock;
+    // Optimistic update — move the card immediately
+    setFlavors((prev) =>
+      prev.map((f) => (f.id === flavor.id ? { ...f, inStock: newStock } : f))
+    );
+    try {
+      const res = await fetch(`/api/flavors/${flavor.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inStock: newStock }),
+      });
+      if (!res.ok) throw new Error(`API error ${res.status}`);
+      if (newStock) {
+        await fetch("/api/notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ flavorId: flavor.id }),
+        });
+        showToast(`✓ ${flavor.name} is back in stock — subscribers notified!`);
+      } else {
+        showToast(`✓ ${flavor.name} marked out of stock.`);
+      }
+    } catch (err) {
+      // Revert on failure
+      setFlavors((prev) =>
+        prev.map((f) => (f.id === flavor.id ? { ...f, inStock: flavor.inStock } : f))
+      );
+      showToast(`✗ Failed to update ${flavor.name}. Please try again.`);
+      console.error(err);
+    }
+  }
 
   function openModal(flavor: Flavor) {
     setModal({ open: true, selectedFlavor: flavor });
@@ -74,79 +131,170 @@ export default function Home() {
     }
   }
 
-  const regular = flavors.filter((f) => f.category === "regular");
-  const oatBased = flavors.filter((f) => f.category === "oat-based");
-  const inStock = regular.filter((f) => f.inStock);
-  const outOfStock = regular.filter((f) => !f.inStock);
+  const inStock = flavors.filter((f) => f.inStock);
+  const outOfStock = flavors.filter((f) => !f.inStock);
 
   return (
-    <main className="min-h-screen">
+    <main className="min-h-screen" style={{ fontFamily: "'Nunito', sans-serif" }}>
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-6 right-6 bg-teal-500 text-white px-6 py-3 rounded-2xl shadow-xl z-50 font-bold text-sm">
+          {toast}
+        </div>
+      )}
+
+      {/* Admin password prompt */}
+      {adminPrompt && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center">
+            <div className="text-4xl mb-3">🔐</div>
+            <h3 className="text-xl font-bold text-gray-700 mb-4" style={{ fontFamily: "'Pacifico', cursive" }}>
+              Admin Mode
+            </h3>
+            <form onSubmit={tryAdminLogin} className="space-y-3">
+              <input
+                type="password"
+                autoFocus
+                value={adminPw}
+                onChange={(e) => setAdminPw(e.target.value)}
+                placeholder="Password"
+                className="w-full border-2 border-yellow-200 rounded-xl px-4 py-2 focus:outline-none focus:border-teal-400 text-center text-lg"
+              />
+              {adminPwError && <p className="text-red-500 text-sm">{adminPwError}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-coral text-white font-bold py-2 rounded-full hover:bg-red-400 transition-colors"
+                >
+                  Enter
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAdminPrompt(false); setAdminPw(""); setAdminPwError(""); }}
+                  className="flex-1 bg-gray-100 text-gray-600 font-bold py-2 rounded-full hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Hero */}
-      <section className="bg-gradient-to-br from-yellow-300 via-pink-200 to-teal-200 py-20 px-4 text-center">
+      <section className="bg-gradient-to-br from-yellow-300 via-pink-200 to-teal-200 py-20 px-4 text-center relative">
         <div className="text-7xl mb-4">🍦</div>
-        <h1 className="text-6xl font-pacifico text-coral drop-shadow-sm mb-4" style={{ fontFamily: "'Pacifico', cursive" }}>
+        <h1
+          className="text-6xl text-coral drop-shadow-sm mb-4"
+          style={{ fontFamily: "'Pacifico', cursive" }}
+        >
           Minnehaha Scoop
         </h1>
-        <p className="text-2xl font-bold text-gray-700 mb-2" style={{ fontFamily: "'Nunito', sans-serif" }}>
+        <p className="text-2xl font-bold text-gray-700 mb-2">
           Life&apos;s too short for boring ice cream!
         </p>
-        <p className="text-lg text-gray-600 max-w-xl mx-auto" style={{ fontFamily: "'Nunito', sans-serif" }}>
+        <p className="text-lg text-gray-600 max-w-xl mx-auto">
           Subscribe to get notified the moment your favorite flavor is back in stock. Never miss a scoop again! 🎉
         </p>
+
+        {/* Admin toggle */}
+        <div className="absolute top-4 right-4">
+          {adminMode ? (
+            <button
+              onClick={() => setAdminMode(false)}
+              className="text-xs bg-orange-400 text-white font-bold px-3 py-1.5 rounded-full hover:bg-orange-500 transition-colors shadow"
+            >
+              ✓ Admin Mode — Click to Exit
+            </button>
+          ) : (
+            <button
+              onClick={() => setAdminPrompt(true)}
+              className="text-xs bg-white/60 text-gray-500 font-bold px-3 py-1.5 rounded-full hover:bg-white/80 transition-colors"
+            >
+              Admin
+            </button>
+          )}
+        </div>
       </section>
+
+      {adminMode && (
+        <div className="bg-orange-50 border-b-2 border-orange-200 px-4 py-3 text-center text-sm font-semibold text-orange-700">
+          🛠 Admin Mode — click <strong>Mark Out</strong> or <strong>Mark In</strong> on any flavor card to update stock. Subscribers are emailed automatically when a flavor comes back.
+        </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 py-12">
 
-        {/* In Stock */}
-        <h2 className="text-3xl mb-6 text-teal-600 font-bold" style={{ fontFamily: "'Pacifico', cursive" }}>
-          🌟 Today&apos;s Flavors
-        </h2>
-        {inStock.length === 0 && (
-          <p className="text-gray-500 mb-8">No flavors in stock right now — check back soon!</p>
-        )}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-14">
-          {inStock.map((f) => (
-            <FlavorCard key={f.id} flavor={f} onNotify={openModal} />
-          ))}
+        {/* IN STOCK */}
+        <div className="flex items-baseline gap-3 mb-6">
+          <h2
+            className="text-3xl text-teal-600 font-bold"
+            style={{ fontFamily: "'Pacifico', cursive" }}
+          >
+            🌟 In Stock
+          </h2>
+          <span className="text-sm font-bold text-teal-500 bg-teal-50 px-3 py-1 rounded-full">
+            {inStock.length} flavor{inStock.length !== 1 ? "s" : ""}
+          </span>
         </div>
 
-        {/* Out of Stock */}
-        {outOfStock.length > 0 && (
-          <>
-            <h2 className="text-3xl mb-2 text-coral font-bold" style={{ fontFamily: "'Pacifico', cursive" }}>
-              😢 Temporarily Gone
-            </h2>
-            <p className="text-gray-500 mb-6">Subscribe to be the first to know when these come back!</p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-14">
-              {outOfStock.map((f) => (
-                <FlavorCard key={f.id} flavor={f} onNotify={openModal} />
-              ))}
-            </div>
-          </>
+        {inStock.length === 0 ? (
+          <p className="text-gray-400 italic mb-14">No flavors in stock right now — check back soon!</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-16">
+            {inStock.map((f) => (
+              <FlavorCard
+                key={f.id}
+                flavor={f}
+                onNotify={openModal}
+                adminMode={adminMode}
+                onToggleStock={toggleStock}
+              />
+            ))}
+          </div>
         )}
 
-        {/* Oat-Based / Plant-Based */}
-        {oatBased.length > 0 && (
-          <>
-            <div className="border-t-2 border-dashed border-teal-200 pt-12 mb-6">
-              <h2 className="text-3xl mb-1 text-teal-600 font-bold" style={{ fontFamily: "'Pacifico', cursive" }}>
-                🌱 Plant-Based Flavors
-              </h2>
-              <p className="text-gray-500 mb-6">Oat-based, non-dairy goodness — everyone deserves a scoop!</p>
-            </div>
+        {/* OUT OF STOCK */}
+        <div className="border-t-2 border-dashed border-gray-200 pt-12">
+          <div className="flex items-baseline gap-3 mb-2">
+            <h2
+              className="text-3xl text-coral font-bold"
+              style={{ fontFamily: "'Pacifico', cursive" }}
+            >
+              😢 Out of Stock
+            </h2>
+            <span className="text-sm font-bold text-red-400 bg-red-50 px-3 py-1 rounded-full">
+              {outOfStock.length} flavor{outOfStock.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <p className="text-gray-500 mb-6">
+            Subscribe below to be the first to know when these come back!
+          </p>
+
+          {outOfStock.length === 0 ? (
+            <p className="text-gray-400 italic mb-14">Everything is in stock — lucky you! 🎉</p>
+          ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 mb-14">
-              {oatBased.map((f) => (
-                <FlavorCard key={f.id} flavor={f} onNotify={openModal} plantBased />
+              {outOfStock.map((f) => (
+                <FlavorCard
+                  key={f.id}
+                  flavor={f}
+                  onNotify={openModal}
+                  adminMode={adminMode}
+                  onToggleStock={toggleStock}
+                />
               ))}
             </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Footer */}
-      <footer className="bg-yellow-300 text-center py-6 text-gray-700 font-semibold" style={{ fontFamily: "'Nunito', sans-serif" }}>
+      <footer className="bg-yellow-300 text-center py-6 text-gray-700 font-semibold">
         © 2024 Minnehaha Scoop &nbsp;•&nbsp; Made with 🍦 &nbsp;•&nbsp;{" "}
-        <a href="/admin" className="underline hover:text-coral transition-colors">Admin</a>
+        <a href="/admin" className="underline hover:text-coral transition-colors">
+          Admin Dashboard
+        </a>
       </footer>
 
       {/* Subscribe Modal */}
@@ -166,16 +314,33 @@ export default function Home() {
             {success ? (
               <div className="text-center py-6">
                 <div className="text-6xl mb-4">🎉</div>
-                <h3 className="text-2xl font-bold text-teal-600 mb-2" style={{ fontFamily: "'Pacifico', cursive" }}>You&apos;re on the list!</h3>
-                <p className="text-gray-600">We&apos;ll let you know the moment your flavors are back. Stay sweet! 🍦</p>
-                <button onClick={closeModal} className="mt-6 bg-coral text-white px-6 py-2 rounded-full font-bold hover:bg-red-400 transition-colors">
+                <h3
+                  className="text-2xl font-bold text-teal-600 mb-2"
+                  style={{ fontFamily: "'Pacifico', cursive" }}
+                >
+                  You&apos;re on the list!
+                </h3>
+                <p className="text-gray-600">
+                  We&apos;ll email you the moment your flavors are back. Stay sweet! 🍦
+                </p>
+                <button
+                  onClick={closeModal}
+                  className="mt-6 bg-coral text-white px-6 py-2 rounded-full font-bold hover:bg-red-400 transition-colors"
+                >
                   Close
                 </button>
               </div>
             ) : (
               <>
-                <h3 className="text-2xl font-bold text-coral mb-1" style={{ fontFamily: "'Pacifico', cursive" }}>Get Notified!</h3>
-                <p className="text-gray-500 text-sm mb-6">Enter your info and pick the flavors you want updates on.</p>
+                <h3
+                  className="text-2xl font-bold text-coral mb-1"
+                  style={{ fontFamily: "'Pacifico', cursive" }}
+                >
+                  Get Notified!
+                </h3>
+                <p className="text-gray-500 text-sm mb-6">
+                  Enter your email and pick every flavor you want updates on.
+                </p>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
@@ -190,23 +355,31 @@ export default function Home() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1">Phone (optional, for SMS)</label>
+                    <label className="block text-sm font-bold text-gray-700 mb-1">
+                      Phone <span className="font-normal text-gray-400">(optional)</span>
+                    </label>
                     <input
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+1 (555) 000-0000"
+                      placeholder="+1 (612) 000-0000"
                       className="w-full border-2 border-yellow-200 rounded-xl px-4 py-2 focus:outline-none focus:border-teal-400"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Notify me about:</label>
-                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Notify me when these are back:
+                    </label>
+                    <div className="grid grid-cols-2 gap-2 max-h-52 overflow-y-auto pr-1">
                       {flavors.map((f) => (
                         <label
                           key={f.id}
-                          className="flex items-center gap-2 cursor-pointer text-sm bg-gray-50 rounded-xl px-3 py-2 hover:bg-yellow-50 transition-colors"
+                          className={`flex items-center gap-2 cursor-pointer text-sm rounded-xl px-3 py-2 transition-colors ${
+                            selectedIds.includes(f.id)
+                              ? "bg-teal-50 ring-1 ring-teal-300"
+                              : "bg-gray-50 hover:bg-yellow-50"
+                          }`}
                         >
                           <input
                             type="checkbox"
@@ -214,7 +387,12 @@ export default function Home() {
                             onChange={() => toggleFlavor(f.id)}
                             className="accent-teal-500"
                           />
-                          <span>{f.emoji} {f.name}</span>
+                          <span>
+                            {f.emoji} {f.name}
+                            {f.category === "oat-based" && (
+                              <span className="ml-1 text-teal-500">🌱</span>
+                            )}
+                          </span>
                         </label>
                       ))}
                     </div>
@@ -239,7 +417,19 @@ export default function Home() {
   );
 }
 
-function FlavorCard({ flavor, onNotify, plantBased }: { flavor: Flavor; onNotify: (f: Flavor) => void; plantBased?: boolean }) {
+function FlavorCard({
+  flavor,
+  onNotify,
+  adminMode,
+  onToggleStock,
+}: {
+  flavor: Flavor;
+  onNotify: (f: Flavor) => void;
+  adminMode?: boolean;
+  onToggleStock?: (f: Flavor) => void;
+}) {
+  const isNonDairy = flavor.category === "oat-based";
+
   return (
     <div
       className="rounded-3xl shadow-lg overflow-hidden flex flex-col transition-transform hover:-translate-y-1 hover:shadow-xl"
@@ -248,28 +438,46 @@ function FlavorCard({ flavor, onNotify, plantBased }: { flavor: Flavor; onNotify
       <div className="text-5xl text-center pt-6 pb-1">{flavor.emoji}</div>
       <div className="bg-white/75 backdrop-blur-sm flex-1 p-3 flex flex-col">
         <div className="flex items-start justify-between gap-1 mb-1">
-          <h3 className="font-bold text-gray-800 text-sm leading-tight">{flavor.name}</h3>
-          {plantBased && (
-            <span className="text-xs bg-teal-100 text-teal-700 font-bold px-2 py-0.5 rounded-full shrink-0">🌱</span>
+          <h3 className="font-bold text-gray-800 text-sm leading-tight" style={{ fontFamily: "'Nunito', sans-serif" }}>
+            {flavor.name}
+          </h3>
+          {isNonDairy && (
+            <span className="text-xs bg-teal-100 text-teal-700 font-bold px-2 py-0.5 rounded-full shrink-0">
+              🌱
+            </span>
           )}
         </div>
-        <p className="text-gray-500 text-xs flex-1 leading-snug">{flavor.description}</p>
+        <p className="text-gray-500 text-xs flex-1 leading-snug" style={{ fontFamily: "'Nunito', sans-serif" }}>
+          {flavor.description}
+        </p>
         <div className="mt-3 flex items-center justify-between gap-1">
           <span
             className={`text-xs font-bold px-2 py-1 rounded-full ${
-              flavor.inStock
-                ? "bg-teal-100 text-teal-700"
-                : "bg-red-100 text-red-600"
+              flavor.inStock ? "bg-teal-100 text-teal-700" : "bg-red-100 text-red-600"
             }`}
           >
             {flavor.inStock ? "✓ In Stock" : "✗ Out"}
           </span>
-          <button
-            onClick={() => onNotify(flavor)}
-            className="text-xs bg-coral text-white font-bold px-3 py-1 rounded-full hover:bg-red-400 transition-colors"
-          >
-            Notify Me
-          </button>
+          {adminMode ? (
+            <button
+              onClick={() => onToggleStock?.(flavor)}
+              className={`text-xs font-bold px-3 py-1 rounded-full transition-colors ${
+                flavor.inStock
+                  ? "bg-orange-200 text-orange-700 hover:bg-orange-300"
+                  : "bg-teal-200 text-teal-700 hover:bg-teal-300"
+              }`}
+            >
+              {flavor.inStock ? "Mark Out" : "Mark In ✉️"}
+            </button>
+          ) : (
+            <button
+              onClick={() => onNotify(flavor)}
+              className="text-xs bg-coral text-white font-bold px-3 py-1 rounded-full hover:bg-red-400 transition-colors"
+              style={{ fontFamily: "'Nunito', sans-serif" }}
+            >
+              Notify Me
+            </button>
+          )}
         </div>
       </div>
     </div>

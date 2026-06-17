@@ -13,6 +13,8 @@ function write(data: unknown) {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   return NextResponse.json(read());
 }
