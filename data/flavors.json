@@ -1,0 +1,10 @@
+[
+  {"id": "1", "name": "Strawberry Dream", "emoji": "🍓", "color": "#FFB3C6", "description": "Fresh strawberries swirled into creamy vanilla", "inStock": true},
+  {"id": "2", "name": "Mint Chip Madness", "emoji": "🌿", "color": "#B5EAD7", "description": "Cool mint with dark chocolate chips", "inStock": true},
+  {"id": "3", "name": "Mango Tango", "emoji": "🥭", "color": "#FFDAC1", "description": "Tropical mango sorbet bursting with flavor", "inStock": false},
+  {"id": "4", "name": "Classic Vanilla", "emoji": "🍦", "color": "#FFF5BA", "description": "Pure Madagascar vanilla bean", "inStock": true},
+  {"id": "5", "name": "Chocolate Fudge", "emoji": "🍫", "color": "#C8A97E", "description": "Rich dark chocolate with fudge swirls", "inStock": true},
+  {"id": "6", "name": "Blueberry Bliss", "emoji": "🫐", "color": "#C5B4E3", "description": "Wild blueberries in a creamy base", "inStock": false},
+  {"id": "7", "name": "Salted Caramel", "emoji": "🧁", "color": "#E8C99B", "description": "Sweet and salty caramel perfection", "inStock": true},
+  {"id": "8", "name": "Rainbow Sherbet", "emoji": "🌈", "color": "#FFD1DC", "description": "A party of citrus flavors in every scoop", "inStock": true}
+]
